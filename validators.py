@@ -7,19 +7,16 @@ import subprocess
 import json
 import statistics
 import sys
-# apt install python-pip
-# python3 -m pip install joblib
-# python3 -m pip install multiprocessing
-# python3 -m pip install joblib
 from joblib import Parallel, delayed
 
-atomPrice=2.0
+timeout=5000
+retry=30
+delay=10
+showErrors=True
 chainId="cosmoshub-2"
-
 print("----- ----- ----- ----- -----")
 print("| VALIDATORS CALCULATIONS   |")
 print("----- ----- ----- ----- -----")
-
 
 inflation = float(GaiaHelper.call("gaiacli query minting inflation -o json --chain-id=" + chainId,None,True))
 stakingPool = GaiaHelper.call("gaiacli query staking pool -o json --chain-id=" + chainId,None,True)
@@ -49,7 +46,8 @@ for operator in jOperators:
     tokens=float(operator["tokens"])/1000000
     moniker = StringHelper.FixToAsciiN(operator["description"]["moniker"], ".", 24)
 
-    jDelegators = GaiaHelper.call("gaiacli query staking delegations-to " + address + " -o json --chain-id=" + chainId,None,True)
+    #jDelegators = GaiaHelper.call("gaiacli query staking delegations-to " + address + " -o json --chain-id=" + chainId,None,True)
+    jDelegators = GaiaHelper.callRetry("gaiacli query staking delegations-to " + address + " -o json --chain-id=" + chainId,timeout,retry,delay,showErrors)
 
     if jDelegators is None:
         print(jDelegators)
@@ -144,7 +142,7 @@ for delegator in delegatorsList:
 
 print("Total number of unique delegators: " + str(len(uniqueDelegators)))
 print("----- ----- ----- ----- -----")
-testRanges=[10, 20, 40, 80, 160, 360, 720, 1440, 2880, 5760, 11520, 23040, 46080, 92160]
+testRanges=[1, 5, 10, 25, 50, 100, 250, 500, 1000, 2000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000]
 for r in testRanges:
     delegatorsListSub=[]
     for delegator in delegatorsList:
@@ -174,9 +172,9 @@ for operator in operators:
 
 
 print("----- ----- ----- ----- -----")
-print("Total: $" + str(earningsSum))
-print("Average: $" + str(earningsSum/cnt))
-print("Median: $" + str(statistics.median(arr)))
+print("Total: " + str(earningsSum) + "ATOM")
+print("Average: " + str(earningsSum/cnt)+ "ATOM")
+print("Median: " + str(statistics.median(arr))+ "ATOM")
 
 print("----- ----- ----- ----- -----")
 print("|    GINI COEFFICIENT       |")
@@ -186,8 +184,8 @@ giniList=[]
 for r in range(1000):
     newArr=[]
     for i in arr:
-        if i < (r):
-            newArr.append(i + (r))
+        if i < r:
+            newArr.append(i + r)
         else:
             newArr.append(i)
     giniList.append(MathHelper.gini(newArr))
